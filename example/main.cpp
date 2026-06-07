@@ -1,6 +1,9 @@
 #include <windows.h>
 
+#include "../mini-steam/steam_api.h"
+
 int main(int argc, char *argv[]) {
-    MessageBoxA(nullptr, "This is from the original application.", "Example", MB_OK);
+    ISteamUserStats *pUserStats = SteamUserStats();
+    pUserStats->SetAchievement("example");
     return 0;
 }
