@@ -12,6 +12,11 @@ typedef __thiscall bool (*pfnSetAchievement)(ISteamUserStats *self, const char *
 pfnSteamUserStats pOriginalSteamUserStats = nullptr;
 pfnSetAchievement pOriginalSetAchievement = nullptr;
 
+__thiscall bool hookedSetAchievement(ISteamUserStats *self, const char *pchName) {
+    cout << "Hooked SetAchievement called for: " << pchName << endl;
+    return pOriginalSetAchievement(self, pchName);
+}
+
 pfnSetAchievement getSetAchievementFunc(ISteamUserStats *stats) {
     void **vtable = *(void ***)stats;
     auto setAchievement = ISteamUserStats::SetAchievement;
@@ -23,12 +28,23 @@ pfnSetAchievement getSetAchievementFunc(ISteamUserStats *stats) {
     return (pfnSetAchievement)vtable[index];
 }
 
-__thiscall bool HookedSetAchievement(ISteamUserStats *self, const char *pchName) {
-    cout << "Hooked SetAchievement called for: " << pchName << endl;
-    return pOriginalSetAchievement(self, pchName);
+bool hookSetAchievement(ISteamUserStats *stats) {
+    pfnSetAchievement setAchievement = getSetAchievementFunc(stats);
+
+    if (MH_CreateHook((LPVOID)setAchievement, (LPVOID)&hookedSetAchievement, (LPVOID *)&pOriginalSetAchievement) !=
+        MH_OK) {
+        cerr << "Failed to create hook for SetAchievement!" << std::endl;
+        return false;
+    }
+
+    if (MH_EnableHook((LPVOID)setAchievement) != MH_OK) {
+        cerr << "Failed to enable hook for SetAchievement!" << std::endl;
+        return false;
+    }
+    return true;
 }
 
-ISteamUserStats *SteamUserStatHook() {
+ISteamUserStats *steamUserStatHook() {
     auto stats = pOriginalSteamUserStats();
     if (pOriginalSetAchievement) {
         return stats; // ALready hooked
@@ -38,57 +54,47 @@ ISteamUserStats *SteamUserStatHook() {
         return stats;
     }
 
-    pfnSetAchievement setAchievement = getSetAchievementFunc(stats);
-
-    if (MH_CreateHook((LPVOID)setAchievement, (LPVOID)&HookedSetAchievement, (LPVOID *)&pOriginalSetAchievement) !=
-        MH_OK) {
-        cerr << "Failed to create hook for SetAchievement!" << std::endl;
-        return stats;
-    }
-
-    if (MH_EnableHook((LPVOID)setAchievement) != MH_OK) {
-        cerr << "Failed to enable hook for SetAchievement!" << std::endl;
-        return stats;
-    }
+    hookSetAchievement(stats);
 
     return stats;
 }
 
-BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
-    HMODULE hSteamAPI = nullptr;
-    pfnSteamUserStats steamUserStats = nullptr;
+bool hookSteamUserStats() {
+    HMODULE hSteamAPI = LoadLibraryA("steam_api.dll");
+    if (!hSteamAPI) {
+        cerr << "Failed to load steam_api.dll!" << std::endl;
+        return false;
+    }
 
+    pfnSteamUserStats steamUserStats = (pfnSteamUserStats)GetProcAddress(hSteamAPI, "SteamUserStats");
+    if (!steamUserStats) { // TODO: This is okay if SteamAPI_ISteamUserStats_SetAchievement is present
+        cerr << "Failed to get SteamUserStats function!" << std::endl;
+        return false;
+    }
+
+    if (MH_CreateHook((LPVOID)steamUserStats, (LPVOID)&steamUserStatHook, (LPVOID *)&pOriginalSteamUserStats) !=
+        MH_OK) {
+        cerr << "Failed to create hook for SteamUserStats!" << std::endl;
+        return false;
+    }
+
+    if (MH_EnableHook((LPVOID)steamUserStats) != MH_OK) {
+        cerr << "Failed to enable hook for SteamUserStats!" << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
     switch (fdwReason) {
     case DLL_PROCESS_ATTACH:
-        hSteamAPI = LoadLibraryA("steam_api.dll");
-        if (!hSteamAPI) {
-            cerr << "Failed to load steam_api.dll!" << std::endl;
-            return FALSE;
-        }
-
-        steamUserStats = (pfnSteamUserStats)GetProcAddress(hSteamAPI, "SteamUserStats");
-        if (!pOriginalSteamUserStats) { // TODO: This is okay if SteamAPI_ISteamUserStats_SetAchievement is present
-            cerr << "Failed to get SteamUserStats function!" << std::endl;
-            return FALSE;
-        }
-
         if (MH_Initialize() != MH_OK) {
             cerr << "Failed to initialize MinHook." << std::endl;
             return FALSE;
         }
 
-        if (MH_CreateHook((LPVOID)steamUserStats, (LPVOID)&SteamUserStatHook, (LPVOID *)&pOriginalSteamUserStats) !=
-            MH_OK) {
-            cerr << "Failed to create hook for SteamUserStats!" << std::endl;
-            MH_Uninitialize();
-            return FALSE;
-        }
-
-        if (MH_EnableHook((LPVOID)&steamUserStats) != MH_OK) {
-            cerr << "Failed to enable hook for SteamUserStats!" << std::endl;
-            MH_Uninitialize();
-            return FALSE;
-        }
+        hookSteamUserStats();
         break;
 
     case DLL_PROCESS_DETACH:
