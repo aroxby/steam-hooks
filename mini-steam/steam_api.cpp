@@ -17,7 +17,6 @@ class CSteamUserStats : public ISteamUserStats {
         LOG_CALL();
         return false;
     }
-
     virtual bool GetStatFloat(const char *pchName, float *pData) {
         LOG_CALL();
         return false;
@@ -47,6 +46,23 @@ class CSteamUserStats : public ISteamUserStats {
     virtual bool ClearAchievement(const char *pchName) {
         LOG_CALL();
         return false;
+    }
+
+    virtual bool GetAchievementAndUnlockTime(const char *pchName, bool *pbAchieved, int32_t *punUnlockTime) {
+        LOG_CALL();
+        return false;
+    }
+    virtual bool StoreStats() {
+        LOG_CALL();
+        return false;
+    }
+    virtual int GetAchievementIcon(const char *pchName) {
+        LOG_CALL();
+        return 0;
+    }
+    virtual const char *GetAchievementDisplayAttribute(const char *pchName, const char *pchKey) {
+        LOG_CALL();
+        return nullptr;
     }
 };
 

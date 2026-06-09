@@ -40,6 +40,11 @@ class ISteamUserStats {
     virtual bool SetAchievement(const char *pchName) = 0;
     virtual bool ClearAchievement(const char *pchName) = 0;
 
+    virtual bool GetAchievementAndUnlockTime(const char *pchName, bool *pbAchieved, int32_t *punUnlockTime) = 0;
+    virtual bool StoreStats() = 0;
+    virtual int GetAchievementIcon(const char *pchName) = 0;
+    virtual const char *GetAchievementDisplayAttribute(const char *pchName, const char *pchKey) = 0;
+
     // Additional methods of ISteamUserStats have been omitted for brevity.
 };
 
