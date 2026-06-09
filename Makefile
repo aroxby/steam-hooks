@@ -1,10 +1,10 @@
 .PHONY: all clean example injected injector mini-steam
 all: example injected injector mini-steam
 
-example injected: mini-steam
+example: mini-steam
 	make -C $@
 
-injector mini-steam:
+injected injector mini-steam:
 	make -C $@
 
 clean:

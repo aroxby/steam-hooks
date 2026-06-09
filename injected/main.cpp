@@ -55,21 +55,36 @@ ISteamUserStats *SteamUserStatHook() {
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
+    HMODULE hSteamAPI = nullptr;
+    pfnSteamUserStats steamUserStats = nullptr;
+
     switch (fdwReason) {
     case DLL_PROCESS_ATTACH:
+        hSteamAPI = LoadLibraryA("steam_api.dll");
+        if (!hSteamAPI) {
+            cerr << "Failed to load steam_api.dll!" << std::endl;
+            return FALSE;
+        }
+
+        steamUserStats = (pfnSteamUserStats)GetProcAddress(hSteamAPI, "SteamUserStats");
+        if (!pOriginalSteamUserStats) { // TODO: This is okay if SteamAPI_ISteamUserStats_SetAchievement is present
+            cerr << "Failed to get SteamUserStats function!" << std::endl;
+            return FALSE;
+        }
+
         if (MH_Initialize() != MH_OK) {
             cerr << "Failed to initialize MinHook." << std::endl;
             return FALSE;
         }
 
-        if (MH_CreateHook((LPVOID)&SteamUserStats, (LPVOID)&SteamUserStatHook, (LPVOID *)&pOriginalSteamUserStats) !=
+        if (MH_CreateHook((LPVOID)steamUserStats, (LPVOID)&SteamUserStatHook, (LPVOID *)&pOriginalSteamUserStats) !=
             MH_OK) {
             cerr << "Failed to create hook for SteamUserStats!" << std::endl;
             MH_Uninitialize();
             return FALSE;
         }
 
-        if (MH_EnableHook((LPVOID)&SteamUserStats) != MH_OK) {
+        if (MH_EnableHook((LPVOID)&steamUserStats) != MH_OK) {
             cerr << "Failed to enable hook for SteamUserStats!" << std::endl;
             MH_Uninitialize();
             return FALSE;
