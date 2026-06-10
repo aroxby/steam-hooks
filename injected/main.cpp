@@ -18,6 +18,7 @@ pfnFindOrCreateUserInterface pOriginalFindOrCreateUserInterface = nullptr;
 
 __thiscall bool hookedSetAchievement(ISteamUserStats *self, const char *pchName) {
     cout << "Hooked SetAchievement called for: " << pchName << endl;
+    self->ClearAchievement(pchName);
     return pOriginalSetAchievement(self, pchName);
 }
 
