@@ -86,9 +86,27 @@ bool hookSteamUserStats() {
     return true;
 }
 
+void attachConsole() {
+    if (!AttachConsole(ATTACH_PARENT_PROCESS)) {
+        AllocConsole();
+    }
+
+    if (!GetConsoleWindow()) {
+        return;
+    }
+
+    FILE *fp;
+    freopen_s(&fp, "CONOUT$", "w", stdout);
+    freopen_s(&fp, "CONOUT$", "w", stderr);
+    freopen_s(&fp, "CONIN$", "r", stdin);
+    std::ios_base::sync_with_stdio();
+}
+
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
     switch (fdwReason) {
     case DLL_PROCESS_ATTACH:
+        attachConsole();
+
         if (MH_Initialize() != MH_OK) {
             cerr << "Failed to initialize MinHook." << std::endl;
             return FALSE;
