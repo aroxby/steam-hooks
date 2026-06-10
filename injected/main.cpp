@@ -50,7 +50,11 @@ bool hookSetAchievement(ISteamUserStats *stats) {
 
 __thiscall bool hookedGetAchievement(ISteamUserStats *self, const char *pchName, bool *pbAchieved) {
     cout << "Hooked GetAchievement called for: " << pchName << endl;
-    return pOriginalGetAchievement(self, pchName, pbAchieved);
+    bool result = pOriginalGetAchievement(self, pchName, pbAchieved);
+    if (pbAchieved) {
+        *pbAchieved = false;
+    }
+    return result;
 }
 
 pfnGetAchievement getGetAchievementFunc(ISteamUserStats *stats) {
