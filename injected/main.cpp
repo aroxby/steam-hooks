@@ -99,7 +99,8 @@ ISteamUserStats *hookedSteamUserStats() {
 }
 
 bool hookSteamUserStats() {
-    HMODULE hSteamAPI = LoadLibraryA("steam_api.dll");
+    HMODULE hSteamAPI;
+    (hSteamAPI = LoadLibraryA("steam_api.dll")) || (hSteamAPI = LoadLibraryA("bin/steam_api.dll"));
     if (!hSteamAPI) {
         cerr << "Failed to load steam_api.dll!" << endl;
         return false;
@@ -137,7 +138,8 @@ void *hookedFindOrCreateUserInterface(int32_t *hSteamUser, const char *pszVersio
 }
 
 bool hookFindOrCreateUserInterface() {
-    HMODULE hSteamAPI = LoadLibraryA("steam_api.dll");
+    HMODULE hSteamAPI;
+    (hSteamAPI = LoadLibraryA("steam_api.dll")) || (hSteamAPI = LoadLibraryA("bin/steam_api.dll"));
     if (!hSteamAPI) {
         cerr << "Failed to load steam_api.dll!" << endl;
         return false;
