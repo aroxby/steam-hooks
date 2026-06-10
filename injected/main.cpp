@@ -7,10 +7,12 @@
 using namespace std;
 
 typedef ISteamUserStats *(*pfnSteamUserStats)();
+typedef __thiscall bool (*pfnGetAchievement)(ISteamUserStats *self, const char *pchName, bool *pbAchieved);
 typedef __thiscall bool (*pfnSetAchievement)(ISteamUserStats *self, const char *pchName);
 typedef void *(*pfnFindOrCreateUserInterface)(int32_t *hSteamUser, const char *pszVersion);
 
 pfnSteamUserStats pOriginalSteamUserStats = nullptr;
+pfnGetAchievement pOriginalGetAchievement = nullptr;
 pfnSetAchievement pOriginalSetAchievement = nullptr;
 pfnFindOrCreateUserInterface pOriginalFindOrCreateUserInterface = nullptr;
 
@@ -46,7 +48,36 @@ bool hookSetAchievement(ISteamUserStats *stats) {
     return true;
 }
 
-ISteamUserStats *steamUserStatHook() {
+__thiscall bool hookedGetAchievement(ISteamUserStats *self, const char *pchName, bool *pbAchieved) {
+    cout << "Hooked GetAchievement called for: " << pchName << endl;
+    return pOriginalGetAchievement(self, pchName, pbAchieved);
+}
+
+pfnGetAchievement getGetAchievementFunc(ISteamUserStats *stats) {
+    void **vtable = *(void ***)stats;
+    auto getAchievement = ISteamUserStats::GetAchievement;
+    size_t index = (size_t)(void *)getAchievement / sizeof(void *);
+    cout << "GetAchievement vtable index: " << index << endl;
+    return (pfnGetAchievement)vtable[index];
+}
+
+bool hookGetAchievement(ISteamUserStats *stats) {
+    pfnGetAchievement getAchievement = getGetAchievementFunc(stats);
+
+    if (MH_CreateHook((LPVOID)getAchievement, (LPVOID)&hookedGetAchievement, (LPVOID *)&pOriginalGetAchievement) !=
+        MH_OK) {
+        cerr << "Failed to create hook for GetAchievement!" << endl;
+        return false;
+    }
+
+    if (MH_EnableHook((LPVOID)getAchievement) != MH_OK) {
+        cerr << "Failed to enable hook for GetAchievement!" << endl;
+        return false;
+    }
+    return true;
+}
+
+ISteamUserStats *hookedSteamUserStats() {
     auto stats = pOriginalSteamUserStats();
     if (pOriginalSetAchievement) {
         return stats; // ALready hooked
@@ -56,6 +87,7 @@ ISteamUserStats *steamUserStatHook() {
         return stats;
     }
 
+    hookGetAchievement(stats);
     hookSetAchievement(stats);
 
     return stats;
@@ -74,7 +106,7 @@ bool hookSteamUserStats() {
         return false;
     }
 
-    if (MH_CreateHook((LPVOID)steamUserStats, (LPVOID)&steamUserStatHook, (LPVOID *)&pOriginalSteamUserStats) !=
+    if (MH_CreateHook((LPVOID)steamUserStats, (LPVOID)&hookedSteamUserStats, (LPVOID *)&pOriginalSteamUserStats) !=
         MH_OK) {
         cerr << "Failed to create hook for SteamUserStats!" << endl;
         return false;
@@ -91,8 +123,9 @@ bool hookSteamUserStats() {
 void *hookedFindOrCreateUserInterface(int32_t *hSteamUser, const char *pszVersion) {
     // cout << "FindOrCreateUserInterface called: " << pszVersion << endl;
     auto hInterface = pOriginalFindOrCreateUserInterface(hSteamUser, pszVersion);
-    if (strstr(pszVersion, "STEAMUSERSTATS_INTERFACE_VERSION") && !pOriginalSetAchievement) {
+    if (hInterface && strstr(pszVersion, "STEAMUSERSTATS_INTERFACE_VERSION") && !pOriginalSetAchievement) {
         cout << "Found SteamUserStats interface." << endl;
+        hookGetAchievement((ISteamUserStats *)hInterface);
         hookSetAchievement((ISteamUserStats *)hInterface);
     }
     return hInterface;
