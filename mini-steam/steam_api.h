@@ -25,6 +25,14 @@
 #endif // STEAM_API_EXPORTS
 #endif
 
+enum ENotificationPosition {
+    k_EPositionInvalid = -1,
+    k_EPositionTopLeft = 0,
+    k_EPositionTopRight = 1,
+    k_EPositionBottomLeft = 2,
+    k_EPositionBottomRight = 3,
+};
+
 class ISteamUserStats {
   public:
     virtual bool RequestCurrentStats() = 0;
@@ -46,6 +54,24 @@ class ISteamUserStats {
     virtual const char *GetAchievementDisplayAttribute(const char *pchName, const char *pchKey) = 0;
 
     // Additional methods of ISteamUserStats have been omitted for brevity.
+};
+
+class ISteamUtils {
+  public:
+    virtual uint32_t GetSecondsSinceAppActive() = 0;
+    virtual uint32_t GetSecondsSinceComputerActive() = 0;
+    virtual int GetConnectedUniverse() = 0;
+    virtual uint32_t GetServerRealTime() = 0;
+    virtual const char *GetIPCountry() = 0;
+    virtual bool GetImageSize(int iImage, uint32_t *pnWidth, uint32_t *pnHeight) = 0;
+    virtual bool GetImageRGBA(int iImage, uint8_t *pubDest, int nDestBufferSize) = 0;
+    virtual bool GetCSERIPPort(uint32_t *unIP, uint16_t *usPort) = 0;
+    virtual uint8_t GetCurrentBatteryPower() = 0;
+    virtual uint32_t GetAppID() = 0;
+
+    virtual void SetOverlayNotificationPosition(ENotificationPosition eNotificationPosition) = 0;
+
+    // Additional methods of ISteamUtils have been omitted for brevity.
 };
 
 S_API ISteamUserStats *SteamUserStats();

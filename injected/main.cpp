@@ -11,10 +11,14 @@ typedef __thiscall bool (*pfnGetAchievement)(ISteamUserStats *self, const char *
 typedef __thiscall bool (*pfnSetAchievement)(ISteamUserStats *self, const char *pchName);
 typedef void *(*pfnFindOrCreateUserInterface)(int32_t *hSteamUser, const char *pszVersion);
 
+typedef ISteamUtils *(*pfnSteamUtils)();
+
 pfnSteamUserStats pOriginalSteamUserStats = nullptr;
 pfnGetAchievement pOriginalGetAchievement = nullptr;
 pfnSetAchievement pOriginalSetAchievement = nullptr;
 pfnFindOrCreateUserInterface pOriginalFindOrCreateUserInterface = nullptr;
+
+pfnSteamUtils pOriginalSteamUtils = nullptr;
 
 __thiscall bool hookedSetAchievement(ISteamUserStats *self, const char *pchName) {
     cout << "Hooked SetAchievement called for: " << pchName << endl;
@@ -134,6 +138,11 @@ void *hookedFindOrCreateUserInterface(int32_t *hSteamUser, const char *pszVersio
         hookGetAchievement((ISteamUserStats *)hInterface);
         hookSetAchievement((ISteamUserStats *)hInterface);
     }
+    if (hInterface && strstr(pszVersion, "SteamUtils") && !pOriginalSteamUtils) {
+        cout << "Found SteamUtils interface." << endl;
+        ISteamUtils *utils = (ISteamUtils *)hInterface;
+        utils->SetOverlayNotificationPosition(ENotificationPosition::k_EPositionTopLeft);
+    }
     return hInterface;
 }
 
@@ -160,6 +169,39 @@ bool hookFindOrCreateUserInterface() {
 
     if (MH_EnableHook((LPVOID)findOrCreateUserInterface) != MH_OK) {
         cerr << "Failed to enable hook for SteamInternal_FindOrCreateUserInterface!" << endl;
+        return false;
+    }
+
+    return true;
+}
+
+ISteamUtils *hookedSteamUtils() {
+    auto utils = pOriginalSteamUtils();
+    utils->SetOverlayNotificationPosition(ENotificationPosition::k_EPositionTopLeft);
+    return utils;
+}
+
+bool hookSteamUtils() {
+    HMODULE hSteamAPI;
+    (hSteamAPI = LoadLibraryA("steam_api.dll")) || (hSteamAPI = LoadLibraryA("bin/steam_api.dll"));
+    if (!hSteamAPI) {
+        cerr << "Failed to load steam_api.dll!" << endl;
+        return false;
+    }
+
+    pfnSteamUtils steamUtils = (pfnSteamUtils)GetProcAddress(hSteamAPI, "SteamUtils");
+    if (!steamUtils) {
+        cerr << "Failed to get SteamUtils function!" << endl;
+        return false;
+    }
+
+    if (MH_CreateHook((LPVOID)steamUtils, (LPVOID)&hookedSteamUtils, (LPVOID *)&pOriginalSteamUtils) != MH_OK) {
+        cerr << "Failed to create hook for SteamUtils!" << endl;
+        return false;
+    }
+
+    if (MH_EnableHook((LPVOID)steamUtils) != MH_OK) {
+        cerr << "Failed to enable hook for SteamUtils!" << endl;
         return false;
     }
 
@@ -194,6 +236,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
 
         hookSteamUserStats();
         hookFindOrCreateUserInterface();
+        hookSteamUtils();
         break;
 
     case DLL_PROCESS_DETACH:
