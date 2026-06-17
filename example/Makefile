@@ -1,16 +1,20 @@
 SRCS=$(wildcard *.cpp)
 TARGET=example
-STEAM_LIB=steam_api.dll
-STEAM_LIB_SRC=../mini-steam/$(STEAM_LIB)
+MINI_STEAM_DIR=../mini-steam
+MINI_STEAM_LIB=steam_api.dll
+MINI_STEAM_LIB_SRC=$(MINI_STEAM_DIR)/$(MINI_STEAM_LIB)
 
 .PHONY: all clean
 all: $(TARGET)
 
-$(STEAM_LIB): $(STEAM_LIB_SRC)
+$(MINI_STEAM_LIB_SRC):
+	make -C $(MINI_STEAM_DIR)
+
+$(MINI_STEAM_LIB): $(MINI_STEAM_LIB_SRC)
 	cp $< $@
 
-$(TARGET): $(SRCS) $(STEAM_LIB)
+$(TARGET): $(SRCS) $(MINI_STEAM_LIB)
 	g++ $^ -o $@
 
 clean:
-	rm -f $(TARGET) *.o $(STEAM_LIB)
+	rm -f $(TARGET) *.o $(MINI_STEAM_LIB)
