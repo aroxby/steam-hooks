@@ -5,7 +5,7 @@ TARGET=injected.dll
 all: $(TARGET)
 
 $(TARGET): $(SRCS)
-	g++ -shared $^ -o $@ -lminhook
+	g++ -static -shared $^ -o $@ -lminhook
 
 clean:
 	rm -f $(TARGET) *.o

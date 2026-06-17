@@ -5,7 +5,7 @@ TARGET=injector
 all: $(TARGET)
 
 $(TARGET): $(SRCS)
-	g++ $^ -o $@
+	g++ -static $^ -o $@
 
 clean:
 	rm -f $(TARGET) *.o
